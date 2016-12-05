@@ -1,0 +1,112 @@
+# Section 4.1
+data.gen=function(beta.0, lambda.0, shape, var.b0, total.center, p=1/2)
+{
+
+
+        # Generate random effects
+
+        b=rnorm(total.center, 0, sqrt(var.b0))
+
+        # Number of patients in each center is 6
+
+        n.center= rep(6, total.center)
+        total.pat=sum(n.center)
+        center=rep(0, total.pat)
+        patid=center
+        followup=center
+        status=center
+        covar.D=matrix(0, total.pat, 2)
+
+        # Covariate #1, center information
+        z.center=ifelse(runif(total.center, 0, 1)> p, 1, 0)
+
+        sum.pat=0
+
+        for (i in 1:total.center)
+        {
+
+                n.pat.i=n.center[i]           		# Number of patients in center i
+
+                # Covariate #2: patient specific covariate values for patients in center i	
+                z.pat.i=runif(n.pat.i, 0, 1)         
+	
+                covar.D.i=cbind(rep(z.center[i], n.pat.i), z.pat.i) 
+
+                # Death time with frailty b
+ 
+                scale=lambda.0 * exp(covar.D.i %*% beta.0 + b[i]) ^ (-1/shape)
+               death.time=rweibull(n.pat.i, shape, scale)
+
+                # Uniform censoring time
+
+                censor.time=runif(n.pat.i, 0, 2) 
+
+                follow.up.i=ifelse(censor.time>=death.time, death.time, censor.time)
+                status.i=ifelse(censor.time>=death.time, 1, 0)
+
+                followup[(sum.pat+1): (sum.pat+n.pat.i)]=follow.up.i
+                status[(sum.pat+1): (sum.pat+n.pat.i)]=status.i               
+                covar.D[(sum.pat+1): (sum.pat+n.pat.i), ]=covar.D.i
+                center[(sum.pat+1): (sum.pat+n.pat.i) ] =i
+                patid[(sum.pat+1): (sum.pat+n.pat.i) ] =(sum.pat+1): (sum.pat+n.pat.i)
+
+                sum.pat=sum.pat+n.pat.i
+                
+        }
+        
+        data.all=data.frame(center, patid,  followup, status, covar.D)
+
+        data.all
+
+
+}
+
+
+	library(MASS)
+
+        memory.size(2048)
+        date1=date()
+        library(survival)
+
+
+        # True values of parameters
+        total.center=100
+        beta.0=c(1, -1)
+        lambda.0=1
+        var.b0=1
+        shape=2
+
+        p=1/2
+        n.covar.D=2
+        n.par.2=n.covar.D+1
+
+        rand.num=1001:1600
+        n.rep=length(rand.num)
+        n.convergence=rep(0, n.rep)
+        par.all=matrix(0, n.rep, n.par.2*2)
+        par.see=par.all
+        cum.base.haz.all=matrix(0, n.rep, 20)
+        cum.base.haz.all.2=matrix(0, n.rep, 20)
+
+        date1=date()
+
+	filedir="c:\\liulei\\paper13\\SAS\\data2\\"
+
+  
+
+for (ii in 1:n.rep)
+{
+
+        # Generate data
+
+        set.seed(rand.num[ii])
+        data.surv=data.gen(beta.0,  lambda.0, shape, var.b0, total.center, 1/2)
+
+	filename=paste(filedir, ii, ".csv", sep="")	# Generate comma delimited file
+
+	data.surv.2=as.matrix(data.surv)
+	write.matrix(data.surv.2, filename, sep=",")
+
+
+ }
+
